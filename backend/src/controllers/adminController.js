@@ -8,7 +8,9 @@ exports.uploadSong = async (req, res) => {
     const file = req.file;
 
     if (!title || !artist || !file) {
-      return res.status(400).json({ error: 'Title, artist, and audio file are required' });
+      return res.status(400).json({
+        error: 'Title, artist, and audio file are required'
+      });
     }
 
     // Create song document first to get ID
@@ -16,15 +18,18 @@ exports.uploadSong = async (req, res) => {
       title,
       artist,
       album: album || 'Unknown Album',
-      duration: duration || 0,
+      duration: Number(duration) || 0,
       fileUrl: 'temp',
       uploadedBy: req.userId
     });
 
     await song.save();
 
-    // Upload encrypted file
-    const uploadResult = await fileHandler.uploadEncryptedFile(file, song._id.toString());
+    // Upload RAW mp3 file (no encryption)
+    const uploadResult = await fileHandler.uploadRawFile(
+      file,
+      song._id.toString()
+    );
 
     // Update song with file URL
     song.fileUrl = uploadResult.url;
@@ -91,9 +96,11 @@ exports.updateSong = async (req, res) => {
 exports.getStats = async (req, res) => {
   try {
     const totalSongs = await Song.countDocuments();
+
     const totalPlays = await Song.aggregate([
       { $group: { _id: null, total: { $sum: '$plays' } } }
     ]);
+
     const totalDownloads = await Song.aggregate([
       { $group: { _id: null, total: { $sum: '$downloads' } } }
     ]);

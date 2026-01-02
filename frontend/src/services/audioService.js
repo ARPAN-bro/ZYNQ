@@ -27,10 +27,7 @@ class AudioService {
   }
 
   async streamSong(songId) {
-    const response = await songAPI.stream(songId);
-    const blob = response.data;
-    const url = URL.createObjectURL(blob);
-    return url;
+    return `${import.meta.env.VITE_API_BASE_URL}/songs/stream/${songId}`;
   }
 
   async playOfflineSong(encryptedData) {

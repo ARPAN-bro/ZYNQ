@@ -49,10 +49,14 @@ export const PlayerProvider = ({ children }) => {
   const playSong = async (song) => {
     try {
       const audioUrl = await audioService.playSong(song._id);
-      
-      audioRef.current.src = audioUrl;
+      const audio = audioRef.current;
+
+      audio.pause();
+      audio.src = audioUrl;
+      audio.load();
+
       setCurrentSong(song);
-      await audioRef.current.play();
+      await audio.play();
       setIsPlaying(true);
     } catch (error) {
       console.error('Error playing song:', error);
@@ -61,11 +65,13 @@ export const PlayerProvider = ({ children }) => {
   };
 
   const togglePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio.src) return;
     if (isPlaying) {
-      audioRef.current.pause();
+      audio.pause();
       setIsPlaying(false);
     } else {
-      await audioRef.current.play();
+      await audio.play();
       setIsPlaying(true);
     }
   };

@@ -1,22 +1,15 @@
 // backend/src/controllers/songController.js
 const Song = require('../models/Song');
 const fileHandler = require('../utils/fileHandler');
-const encryptionService = require('../utils/encryption');
 
 exports.getAllSongs = async (req, res) => {
   try {
     const { search, artist, album } = req.query;
     let query = {};
 
-    if (search) {
-      query.$text = { $search: search };
-    }
-    if (artist) {
-      query.artist = new RegExp(artist, 'i');
-    }
-    if (album) {
-      query.album = new RegExp(album, 'i');
-    }
+    if (search) query.$text = { $search: search };
+    if (artist) query.artist = new RegExp(artist, 'i');
+    if (album) query.album = new RegExp(album, 'i');
 
     const songs = await Song.find(query)
       .populate('uploadedBy', 'username')
@@ -39,7 +32,7 @@ exports.getSongById = async (req, res) => {
     }
 
     res.json({ song });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to fetch song' });
   }
 };
@@ -47,25 +40,38 @@ exports.getSongById = async (req, res) => {
 exports.streamSong = async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
-    
+
     if (!song) {
       return res.status(404).json({ error: 'Song not found' });
     }
 
-    // Increment play count
+    // increment plays (fire-and-forget style)
     song.plays += 1;
-    await song.save();
+    song.save();
 
-    // Get encrypted file
-    const encryptedBuffer = await fileHandler.getEncryptedFile(song.fileUrl);
-    
-    // Decrypt
-    const decryptedBuffer = encryptionService.decrypt(encryptedBuffer);
+    /**
+     * fileHandler must return:
+     * {
+     *   size: number,
+     *   stream: ReadableStream
+     * }
+     */
+    const { size, stream } = await fileHandler.getRawStream(
+      song.fileUrl,
+      req.headers.range
+    );
+
+    const range = req.headers.range;
+
+    if (range) {
+      res.status(206);
+    }
 
     res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Length', decryptedBuffer.length);
     res.setHeader('Accept-Ranges', 'bytes');
-    res.send(decryptedBuffer);
+    res.setHeader('Content-Length', size);
+
+    stream.pipe(res);
   } catch (error) {
     console.error('Stream song error:', error);
     res.status(500).json({ error: 'Failed to stream song' });
@@ -75,21 +81,24 @@ exports.streamSong = async (req, res) => {
 exports.downloadSong = async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
-    
+
     if (!song) {
       return res.status(404).json({ error: 'Song not found' });
     }
 
-    // Increment download count
     song.downloads += 1;
-    await song.save();
+    song.save();
 
-    // Get encrypted file
-    const encryptedBuffer = await fileHandler.getEncryptedFile(song.fileUrl);
+    // RAW file download (simple version)
+    const stream = await fileHandler.getRawDownloadStream(song.fileUrl);
 
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${song.title}.enc"`);
-    res.send(encryptedBuffer);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${song.title}.mp3"`
+    );
+
+    stream.pipe(res);
   } catch (error) {
     console.error('Download song error:', error);
     res.status(500).json({ error: 'Failed to download song' });
