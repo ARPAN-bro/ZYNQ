@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { songAPI } from '../../services/api';
 import SongCard from './SongCard';
-import { Search, Heart } from 'lucide-react';
+import { Search, Heart, Music2 } from 'lucide-react';
 import DonationModal from '../Premium/DonationModal';
 
 export default function SongList() {
@@ -19,6 +19,7 @@ export default function SongList() {
     try {
       const response = await songAPI.getAll();
       setSongs(response.data.songs);
+      console.log('Fetched songs:', response.data.songs);
     } catch (error) {
       console.error('Error fetching songs:', error);
     } finally {
@@ -33,13 +34,21 @@ export default function SongList() {
   );
 
   if (loading) {
-    return <div style={styles.loading}>Loading songs...</div>;
+    return (
+      <div style={styles.loading}>
+        <Music2 size={48} color="#1DB954" />
+        <p style={{ marginTop: '16px' }}>Loading your music...</p>
+      </div>
+    );
   }
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Your Library</h1>
+        <div>
+          <h1 style={styles.title}>Your Library</h1>
+          <p style={styles.subtitle}>{songs.length} songs available</p>
+        </div>
         <button 
           style={styles.donateBtn}
           onClick={() => setShowDonationModal(true)}
@@ -62,7 +71,13 @@ export default function SongList() {
 
       {filteredSongs.length === 0 ? (
         <div style={styles.empty}>
-          {search ? 'No songs found' : 'No songs available yet'}
+          <Music2 size={64} color="#282828" />
+          <h3 style={styles.emptyTitle}>
+            {search ? 'No results found' : 'No songs yet'}
+          </h3>
+          <p style={styles.emptyText}>
+            {search ? 'Try a different search term' : 'Songs will appear here once uploaded'}
+          </p>
         </div>
       ) : (
         <div style={styles.grid}>
@@ -81,40 +96,56 @@ export default function SongList() {
 
 const styles = {
   container: {
-    padding: '24px',
-    maxWidth: '1400px',
-    margin: '0 auto'
+    padding: '32px 32px 120px', // Extra bottom padding for player
+    maxWidth: '1955px',
+    margin: '0 auto',
+    minHeight: 'calc(100vh - 90px)' // Account for player height
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '24px'
+    marginBottom: '24px',
+    flexWrap: 'wrap',
+    gap: '16px'
   },
   title: {
-    fontSize: '32px',
-    fontWeight: 'bold'
+    fontSize: '48px',
+    fontWeight: '900',
+    marginBottom: '8px',
+    letterSpacing: '-0.04em'
+  },
+  subtitle: {
+    fontSize: '14px',
+    color: '#B3B3B3',
+    fontWeight: '400'
   },
   donateBtn: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '12px 24px',
-    borderRadius: '24px',
+    padding: '12px 32px',
+    borderRadius: '500px',
     backgroundColor: '#1DB954',
-    color: '#FFFFFF',
-    fontSize: '16px',
-    fontWeight: 'bold',
-    transition: 'transform 0.2s'
+    color: '#000000',
+    fontSize: '14px',
+    fontWeight: '700',
+    transition: 'all 0.3s',
+    border: 'none',
+    cursor: 'pointer',
+    textTransform: 'uppercase',
+    letterSpacing: '0.1em'
   },
   searchBar: {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: '12px 20px',
-    backgroundColor: '#282828',
-    borderRadius: '24px',
-    marginBottom: '32px'
+    padding: '12px 16px',
+    backgroundColor: '#242424',
+    borderRadius: '500px',
+    marginBottom: '32px',
+    maxWidth: '364px',
+    transition: 'background-color 0.3s'
   },
   searchInput: {
     flex: 1,
@@ -122,23 +153,44 @@ const styles = {
     outline: 'none',
     backgroundColor: 'transparent',
     color: '#FFFFFF',
-    fontSize: '14px'
+    fontSize: '14px',
+    fontWeight: '400'
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: '24px'
+    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+    gap: '24px',
+    marginTop: '16px'
   },
   loading: {
     textAlign: 'center',
     padding: '100px 20px',
-    fontSize: '18px',
-    color: '#B3B3B3'
+    fontSize: '16px',
+    color: '#B3B3B3',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 'calc(100vh - 200px)'
   },
   empty: {
     textAlign: 'center',
-    padding: '100px 20px',
-    fontSize: '18px',
+    padding: '80px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '400px'
+  },
+  emptyTitle: {
+    fontSize: '24px',
+    fontWeight: '700',
+    marginTop: '24px',
+    marginBottom: '8px',
+    color: '#FFFFFF'
+  },
+  emptyText: {
+    fontSize: '14px',
     color: '#B3B3B3'
   }
 };

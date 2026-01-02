@@ -28,21 +28,32 @@ export const PlayerProvider = ({ children }) => {
 
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
-      console.log('Audio loaded, duration:', audio.duration);
+      console.log('✅ Audio loaded, duration:', audio.duration);
     };
 
     const handleEnded = () => {
       setIsPlaying(false);
       setProgress(0);
+      console.log('🏁 Song ended');
     };
 
     const handleError = (e) => {
-      console.error('Audio error:', e);
+      console.error('❌ Audio error:', {
+        error: e,
+        code: audio.error?.code,
+        message: audio.error?.message,
+        src: audio.src
+      });
       setIsPlaying(false);
+      alert('Failed to play audio. Check console for details.');
     };
 
     const handleCanPlay = () => {
-      console.log('Audio can play');
+      console.log('✅ Audio can play');
+    };
+
+    const handleLoadStart = () => {
+      console.log('🔄 Loading audio...');
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
@@ -50,6 +61,7 @@ export const PlayerProvider = ({ children }) => {
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('error', handleError);
     audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('loadstart', handleLoadStart);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
@@ -57,38 +69,80 @@ export const PlayerProvider = ({ children }) => {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
       audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('loadstart', handleLoadStart);
     };
   }, []);
 
   const playSong = async (song) => {
     try {
-      console.log('PlayerContext: Playing song', song.title);
+      console.log('🎵 PlayerContext: Playing song', song.title);
       
       const audioUrl = await audioService.playSong(song._id);
+      console.log('🔗 Audio URL:', audioUrl);
+
       const audio = audioRef.current;
-
-      console.log('Audio URL:', audioUrl);
-
       audio.pause();
-      audio.src = audioUrl;
-      audio.load();
 
+      // If it's a streaming URL (not a blob), we need to fetch with auth
+      if (audioUrl.startsWith('http')) {
+        console.log('🌐 Fetching authenticated stream...');
+        const token = localStorage.getItem('token');
+        
+        try {
+          const response = await fetch(audioUrl, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          console.log('✅ Stream fetched, blob created:', blobUrl);
+          
+          audio.src = blobUrl;
+        } catch (fetchError) {
+          console.error('❌ Fetch error:', fetchError);
+          throw new Error('Failed to fetch audio: ' + fetchError.message);
+        }
+      } else {
+        // It's already a blob URL from offline storage
+        audio.src = audioUrl;
+      }
+
+      audio.load();
       setCurrentSong(song);
       
       // Wait for audio to be ready
-      audio.addEventListener('canplay', async () => {
-        try {
-          await audio.play();
-          setIsPlaying(true);
-          console.log('Audio playing');
-        } catch (playError) {
-          console.error('Play error:', playError);
-          alert('Failed to play audio. Check console for details.');
-        }
-      }, { once: true });
+      const playPromise = new Promise((resolve, reject) => {
+        const canplayHandler = async () => {
+          try {
+            await audio.play();
+            setIsPlaying(true);
+            console.log('▶️ Audio playing');
+            resolve();
+          } catch (playError) {
+            console.error('❌ Play error:', playError);
+            reject(playError);
+          }
+        };
+
+        audio.addEventListener('canplay', canplayHandler, { once: true });
+
+        // Timeout after 10 seconds
+        setTimeout(() => {
+          audio.removeEventListener('canplay', canplayHandler);
+          reject(new Error('Audio loading timeout'));
+        }, 10000);
+      });
+
+      await playPromise;
 
     } catch (error) {
-      console.error('Error in playSong:', error);
+      console.error('❌ Error in playSong:', error);
       alert('Failed to play song: ' + error.message);
     }
   };
@@ -96,7 +150,7 @@ export const PlayerProvider = ({ children }) => {
   const togglePlay = async () => {
     const audio = audioRef.current;
     if (!audio.src) {
-      console.log('No audio source');
+      console.log('⚠️ No audio source');
       return;
     }
     
@@ -104,20 +158,22 @@ export const PlayerProvider = ({ children }) => {
       if (isPlaying) {
         audio.pause();
         setIsPlaying(false);
-        console.log('Audio paused');
+        console.log('⏸️ Audio paused');
       } else {
         await audio.play();
         setIsPlaying(true);
-        console.log('Audio resumed');
+        console.log('▶️ Audio resumed');
       }
     } catch (error) {
-      console.error('Toggle play error:', error);
+      console.error('❌ Toggle play error:', error);
     }
   };
 
   const seek = (time) => {
-    audioRef.current.currentTime = time;
+    const audio = audioRef.current;
+    audio.currentTime = time;
     setProgress(time);
+    console.log('⏩ Seeked to:', time);
   };
 
   const setVolume = (volume) => {
