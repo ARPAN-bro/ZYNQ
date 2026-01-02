@@ -1,6 +1,7 @@
 // backend/src/controllers/songController.js
 const Song = require('../models/Song');
-const fileHandler = require('../utils/fileHandler');
+const path = require('path');
+const fs = require('fs');
 
 exports.getAllSongs = async (req, res) => {
   try {
@@ -32,7 +33,8 @@ exports.getSongById = async (req, res) => {
     }
 
     res.json({ song });
-  } catch {
+  } catch (error) {
+    console.error('Get song by ID error:', error);
     res.status(500).json({ error: 'Failed to fetch song' });
   }
 };
@@ -45,36 +47,53 @@ exports.streamSong = async (req, res) => {
       return res.status(404).json({ error: 'Song not found' });
     }
 
-    // increment plays (fire-and-forget style)
+    // Increment plays
     song.plays += 1;
-    song.save();
+    song.save().catch(err => console.error('Error updating plays:', err));
 
-    /**
-     * fileHandler must return:
-     * {
-     *   size: number,
-     *   stream: ReadableStream
-     * }
-     */
-    const { size, stream } = await fileHandler.getRawStream(
-      song.fileUrl,
-      req.headers.range
-    );
+    // Get file path
+    const filepath = path.join(__dirname, '../../', song.fileUrl);
+    
+    console.log('Streaming file:', filepath);
 
+    if (!fs.existsSync(filepath)) {
+      console.error('File not found:', filepath);
+      return res.status(404).json({ error: 'Audio file not found' });
+    }
+
+    const stat = fs.statSync(filepath);
+    const fileSize = stat.size;
     const range = req.headers.range;
 
     if (range) {
-      res.status(206);
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(filepath, { start, end });
+
+      const head = {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': 'audio/mpeg',
+      };
+
+      res.writeHead(206, head);
+      file.pipe(res);
+    } else {
+      const head = {
+        'Content-Length': fileSize,
+        'Content-Type': 'audio/mpeg',
+      };
+      res.writeHead(200, head);
+      fs.createReadStream(filepath).pipe(res);
     }
-
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Content-Length', size);
-
-    stream.pipe(res);
   } catch (error) {
     console.error('Stream song error:', error);
-    res.status(500).json({ error: 'Failed to stream song' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to stream song' });
+    }
   }
 };
 
@@ -86,21 +105,38 @@ exports.downloadSong = async (req, res) => {
       return res.status(404).json({ error: 'Song not found' });
     }
 
+    // Increment downloads
     song.downloads += 1;
-    song.save();
+    song.save().catch(err => console.error('Error updating downloads:', err));
 
-    // RAW file download (simple version)
-    const stream = await fileHandler.getRawDownloadStream(song.fileUrl);
+    const filepath = path.join(__dirname, '../../', song.fileUrl);
+    
+    console.log('Downloading file:', filepath);
+
+    if (!fs.existsSync(filepath)) {
+      console.error('File not found:', filepath);
+      return res.status(404).json({ error: 'Audio file not found' });
+    }
+
+    const filename = `${song.artist} - ${song.title}.mp3`.replace(/[/\\?%*:|"<>]/g, '-');
 
     res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${song.title}.mp3"`
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
-    stream.pipe(res);
+    const fileStream = fs.createReadStream(filepath);
+    fileStream.pipe(res);
+
+    fileStream.on('error', (error) => {
+      console.error('Download stream error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Download error' });
+      }
+    });
+
   } catch (error) {
     console.error('Download song error:', error);
-    res.status(500).json({ error: 'Failed to download song' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to download song' });
+    }
   }
 };

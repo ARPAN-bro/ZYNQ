@@ -85,26 +85,34 @@ class FileHandler {
   }
 
   /**
-   * Get READ stream (used for streaming & encrypted download)
+   * Stream RAW mp3 with range support (local storage)
    */
-  /**
- * Stream RAW mp3 with range support (local storage)
- */
   async getRawStream(fileUrl, range) {
     const filepath = path.join(__dirname, '../../', fileUrl);
+    
+    // Check if file exists
+    if (!fs.existsSync(filepath)) {
+      throw new Error('File not found');
+    }
+
     const stat = await fs.promises.stat(filepath);
     const fileSize = stat.size;
 
+    // No range request - send full file
     if (!range) {
       return {
-      size: fileSize,
-      stream: fs.createReadStream(filepath)
-    };
+        size: fileSize,
+        stream: fs.createReadStream(filepath),
+        start: 0,
+        end: fileSize - 1,
+        fileSize
+      };
     }
 
-  const parts = range.replace(/bytes=/, '').split('-');
-  const start = parseInt(parts[0], 10);
-  const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    // Parse range request
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
     const chunkSize = end - start + 1;
 
     return {
@@ -116,14 +124,18 @@ class FileHandler {
     };
   }
 
-/**
- * Full file stream (used for downloads)
- */
+  /**
+   * Full file stream (used for downloads)
+   */
   async getRawDownloadStream(fileUrl) {
     const filepath = path.join(__dirname, '../../', fileUrl);
+    
+    if (!fs.existsSync(filepath)) {
+      throw new Error('File not found');
+    }
+    
     return fs.createReadStream(filepath);
   }
-
 }
 
 module.exports = new FileHandler();

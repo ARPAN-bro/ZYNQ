@@ -28,6 +28,7 @@ export const PlayerProvider = ({ children }) => {
 
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
+      console.log('Audio loaded, duration:', audio.duration);
     };
 
     const handleEnded = () => {
@@ -35,44 +36,82 @@ export const PlayerProvider = ({ children }) => {
       setProgress(0);
     };
 
+    const handleError = (e) => {
+      console.error('Audio error:', e);
+      setIsPlaying(false);
+    };
+
+    const handleCanPlay = () => {
+      console.log('Audio can play');
+    };
+
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+    audio.addEventListener('canplay', handleCanPlay);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+      audio.removeEventListener('canplay', handleCanPlay);
     };
   }, []);
 
   const playSong = async (song) => {
     try {
+      console.log('PlayerContext: Playing song', song.title);
+      
       const audioUrl = await audioService.playSong(song._id);
       const audio = audioRef.current;
+
+      console.log('Audio URL:', audioUrl);
 
       audio.pause();
       audio.src = audioUrl;
       audio.load();
 
       setCurrentSong(song);
-      await audio.play();
-      setIsPlaying(true);
+      
+      // Wait for audio to be ready
+      audio.addEventListener('canplay', async () => {
+        try {
+          await audio.play();
+          setIsPlaying(true);
+          console.log('Audio playing');
+        } catch (playError) {
+          console.error('Play error:', playError);
+          alert('Failed to play audio. Check console for details.');
+        }
+      }, { once: true });
+
     } catch (error) {
-      console.error('Error playing song:', error);
-      alert('Failed to play song');
+      console.error('Error in playSong:', error);
+      alert('Failed to play song: ' + error.message);
     }
   };
 
   const togglePlay = async () => {
     const audio = audioRef.current;
-    if (!audio.src) return;
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      await audio.play();
-      setIsPlaying(true);
+    if (!audio.src) {
+      console.log('No audio source');
+      return;
+    }
+    
+    try {
+      if (isPlaying) {
+        audio.pause();
+        setIsPlaying(false);
+        console.log('Audio paused');
+      } else {
+        await audio.play();
+        setIsPlaying(true);
+        console.log('Audio resumed');
+      }
+    } catch (error) {
+      console.error('Toggle play error:', error);
     }
   };
 

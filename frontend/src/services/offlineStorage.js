@@ -6,7 +6,8 @@ class OfflineStorage {
   constructor() {
     this.store = localforage.createInstance({
       name: DB_NAME,
-      storeName: STORE_NAME
+      storeName: STORE_NAME,
+      driver: [localforage.INDEXEDDB, localforage.WEBSQL, localforage.LOCALSTORAGE]
     });
   }
 
@@ -16,6 +17,7 @@ class OfflineStorage {
         ...songData,
         downloadedAt: new Date().toISOString()
       });
+      console.log('Song saved to offline storage:', songId);
       return true;
     } catch (error) {
       console.error('Error saving song:', error);
@@ -25,7 +27,8 @@ class OfflineStorage {
 
   async getSong(songId) {
     try {
-      return await this.store.getItem(songId);
+      const song = await this.store.getItem(songId);
+      return song;
     } catch (error) {
       console.error('Error getting song:', error);
       return null;
@@ -35,6 +38,7 @@ class OfflineStorage {
   async removeSong(songId) {
     try {
       await this.store.removeItem(songId);
+      console.log('Song removed from offline storage:', songId);
       return true;
     } catch (error) {
       console.error('Error removing song:', error);
@@ -67,10 +71,26 @@ class OfflineStorage {
   async clearAll() {
     try {
       await this.store.clear();
+      console.log('All offline songs cleared');
       return true;
     } catch (error) {
       console.error('Error clearing storage:', error);
       return false;
+    }
+  }
+
+  async getStorageSize() {
+    try {
+      let totalSize = 0;
+      await this.store.iterate((value) => {
+        if (value.audioData) {
+          totalSize += value.audioData.byteLength || 0;
+        }
+      });
+      return totalSize;
+    } catch (error) {
+      console.error('Error calculating storage size:', error);
+      return 0;
     }
   }
 }

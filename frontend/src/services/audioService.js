@@ -1,39 +1,40 @@
 // frontend/src/services/audioService.js
-import { songAPI } from './api';
+import { API_URL } from '../utils/constants';
 import offlineStorage from './offlineStorage';
-import encryptionService from './encryption';
+import axios from 'axios';
 
 class AudioService {
-  constructor() {
-    this.audioContext = null;
-    this.currentSource = null;
-  }
-
   async playSong(songId) {
     try {
+      console.log('Playing song:', songId);
+      
       // Try offline first
       const offlineSong = await offlineStorage.getSong(songId);
       
-      if (offlineSong && offlineSong.encryptedData) {
-        return await this.playOfflineSong(offlineSong.encryptedData);
+      if (offlineSong && offlineSong.audioData) {
+        console.log('Playing from offline storage');
+        return this.playOfflineSong(offlineSong.audioData);
       }
       
       // Stream from server
-      return await this.streamSong(songId);
+      console.log('Streaming from server');
+      return this.streamSong(songId);
     } catch (error) {
       console.error('Error playing song:', error);
       throw error;
     }
   }
 
-  async streamSong(songId) {
-    return `${import.meta.env.VITE_API_BASE_URL}/songs/stream/${songId}`;
+  streamSong(songId) {
+    const token = localStorage.getItem('token');
+    const streamUrl = `${API_URL}/songs/${songId}/stream?token=${token}`;
+    console.log('Stream URL:', streamUrl);
+    return streamUrl;
   }
 
-  async playOfflineSong(encryptedData) {
+  playOfflineSong(audioData) {
     try {
-      const decrypted = await encryptionService.decrypt(encryptedData);
-      const blob = new Blob([decrypted], { type: 'audio/mpeg' });
+      const blob = new Blob([audioData], { type: 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
       return url;
     } catch (error) {
@@ -44,14 +45,26 @@ class AudioService {
 
   async downloadSong(songId, songDetails) {
     try {
-      const response = await songAPI.download(songId);
-      const encryptedData = response.data;
+      console.log('Downloading song:', songId);
+      
+      const token = localStorage.getItem('token');
+      const downloadUrl = `${API_URL}/songs/${songId}/download`;
+      
+      const response = await axios.get(downloadUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        responseType: 'arraybuffer'
+      });
+
+      console.log('Download complete, saving to storage...');
       
       await offlineStorage.saveSong(songId, {
         ...songDetails,
-        encryptedData
+        audioData: response.data
       });
       
+      console.log('Song saved to offline storage');
       return true;
     } catch (error) {
       console.error('Error downloading song:', error);
