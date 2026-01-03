@@ -7,6 +7,5 @@ const auth = require('../middleware/auth');
 router.get('/', songController.getAllSongs);
 router.get('/:id', songController.getSongById);
 router.get('/:id/stream', auth, songController.streamSong);
-router.get('/:id/download', auth, songController.downloadSong);
 
 module.exports = router;

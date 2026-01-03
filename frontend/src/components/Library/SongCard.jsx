@@ -1,48 +1,16 @@
 // frontend/src/components/Library/SongCard.jsx
-import { useState, useEffect } from 'react';
-import { Play, Pause, Download, Check } from 'lucide-react';
+import { useState } from 'react';
+import { Play, Pause } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
-import audioService from '../../services/audioService';
 
 export default function SongCard({ song }) {
   const { playSong, currentSong, isPlaying } = usePlayer();
-  const [isDownloaded, setIsDownloaded] = useState(false);
-  const [downloading, setDownloading] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const isCurrentSong = currentSong?._id === song._id;
-
-  useEffect(() => {
-    checkDownloadStatus();
-  }, [song._id]);
-
-  const checkDownloadStatus = async () => {
-    const downloaded = await audioService.isDownloaded(song._id);
-    setIsDownloaded(downloaded);
-  };
 
   const handlePlay = (e) => {
     e.stopPropagation();
     playSong(song);
-  };
-
-  const handleDownload = async (e) => {
-    e.stopPropagation();
-    if (isDownloaded) return;
-    
-    setDownloading(true);
-    const success = await audioService.downloadSong(song._id, {
-      title: song.title,
-      artist: song.artist,
-      album: song.album,
-      artworkUrl: song.artworkUrl
-    });
-    
-    if (success) {
-      setIsDownloaded(true);
-    } else {
-      alert('Failed to download song');
-    }
-    setDownloading(false);
   };
 
   const formatDuration = (seconds) => {
@@ -95,19 +63,6 @@ export default function SongCard({ song }) {
         <span style={styles.album}>{song.album}</span>
         <span style={styles.duration}>{formatDuration(song.duration)}</span>
       </div>
-
-      <button
-        onClick={handleDownload}
-        disabled={downloading || isDownloaded}
-        style={{
-          ...styles.downloadBtn,
-          ...(isDownloaded ? styles.downloadedBtn : {}),
-          ...(isHovered ? styles.downloadBtnVisible : {})
-        }}
-        title={isDownloaded ? 'Downloaded' : 'Download for offline'}
-      >
-        {downloading ? '...' : isDownloaded ? <Check size={16} /> : <Download size={16} />}
-      </button>
     </div>
   );
 }
@@ -205,31 +160,5 @@ const styles = {
   },
   duration: {
     flexShrink: 0
-  },
-  downloadBtn: {
-    position: 'absolute',
-    top: '8px',
-    right: '8px',
-    width: '32px',
-    height: '32px',
-    borderRadius: '50%',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    color: '#FFFFFF',
-    fontSize: '14px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'all 0.2s',
-    border: 'none',
-    cursor: 'pointer',
-    opacity: 0
-  },
-  downloadBtnVisible: {
-    opacity: 1
-  },
-  downloadedBtn: {
-    backgroundColor: '#1DB954',
-    cursor: 'default',
-    opacity: 1
   }
 };

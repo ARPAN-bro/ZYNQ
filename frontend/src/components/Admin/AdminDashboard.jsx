@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import UploadSong from './UploadSong';
 import { adminAPI, songAPI } from '../../services/api';
-import { Trash2, TrendingUp, Music, Download } from 'lucide-react';
+import { Trash2, TrendingUp, Music } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -60,11 +60,6 @@ export default function AdminDashboard() {
           <div style={styles.statValue}>{stats?.totalPlays || 0}</div>
           <div style={styles.statLabel}>Total Plays</div>
         </div>
-        <div style={styles.statCard}>
-          <Download size={32} color="#1DB954" />
-          <div style={styles.statValue}>{stats?.totalDownloads || 0}</div>
-          <div style={styles.statLabel}>Total Downloads</div>
-        </div>
       </div>
 
       {/* Upload Section */}
@@ -84,7 +79,7 @@ export default function AdminDashboard() {
                 <div style={styles.songTitle}>{song.title}</div>
                 <div style={styles.songArtist}>{song.artist} • {song.album}</div>
                 <div style={styles.songStats}>
-                  {song.plays} plays • {song.downloads} downloads
+                  {song.plays} plays
                 </div>
               </div>
               <button
