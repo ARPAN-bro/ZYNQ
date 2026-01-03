@@ -25,6 +25,9 @@ const upload = multer({
 // All admin routes require authentication and admin privileges
 router.use(auth, admin);
 
+// New endpoint for metadata extraction
+router.post('/extract-metadata', upload.single('audio'), adminController.extractMetadata);
+
 router.post('/songs', upload.single('audio'), adminController.uploadSong);
 router.delete('/songs/:id', adminController.deleteSong);
 router.put('/songs/:id', adminController.updateSong);

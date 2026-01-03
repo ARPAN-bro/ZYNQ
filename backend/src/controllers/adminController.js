@@ -4,25 +4,116 @@ const path = require('path');
 const fs = require('fs');
 const musicMetadata = require('music-metadata');
 
-exports.uploadSong = async (req, res) => {
+// Extract metadata endpoint
+exports.extractMetadata = async (req, res) => {
   try {
-    const { title, artist, album, duration } = req.body;
     const file = req.file;
 
-    if (!title || !artist || !file) {
+    if (!file) {
+      return res.status(400).json({ error: 'Audio file is required' });
+    }
+
+    console.log('Extracting metadata from file...');
+
+    let metadata = {
+      title: '',
+      artists: '',
+      album: '',
+      duration: 0,
+      year: ''
+    };
+
+    try {
+      const parsed = await musicMetadata.parseBuffer(file.buffer, {
+        mimeType: 'audio/mpeg'
+      });
+
+      console.log('Raw metadata:', parsed.common);
+
+      // Extract title
+      if (parsed.common.title) {
+        metadata.title = parsed.common.title;
+      }
+
+      // Extract artists (can be multiple)
+      if (parsed.common.artists && parsed.common.artists.length > 0) {
+        metadata.artists = parsed.common.artists.join(', ');
+      } else if (parsed.common.artist) {
+        metadata.artists = parsed.common.artist;
+      }
+
+      // Extract album
+      if (parsed.common.album) {
+        metadata.album = parsed.common.album;
+      }
+
+      // Extract duration
+      if (parsed.format.duration) {
+        metadata.duration = Math.floor(parsed.format.duration);
+      }
+
+      // Extract year
+      if (parsed.common.year) {
+        metadata.year = parsed.common.year.toString();
+      } else if (parsed.common.date) {
+        // Try to extract year from date string
+        const yearMatch = parsed.common.date.match(/\d{4}/);
+        if (yearMatch) {
+          metadata.year = yearMatch[0];
+        }
+      }
+
+      console.log('Extracted metadata:', metadata);
+
+      res.json({
+        success: true,
+        metadata
+      });
+    } catch (metadataError) {
+      console.error('Metadata parsing error:', metadataError);
+      res.json({
+        success: false,
+        metadata: {
+          title: '',
+          artists: '',
+          album: '',
+          duration: 0,
+          year: ''
+        },
+        message: 'Could not extract metadata from file'
+      });
+    }
+  } catch (error) {
+    console.error('Extract metadata error:', error);
+    res.status(500).json({ error: 'Failed to extract metadata' });
+  }
+};
+
+exports.uploadSong = async (req, res) => {
+  try {
+    const { title, artists, album, duration, year } = req.body;
+    const file = req.file;
+
+    if (!title || !artists || !file) {
       return res.status(400).json({
-        error: 'Title, artist, and audio file are required'
+        error: 'Title, artist(s), and audio file are required'
       });
     }
 
-    console.log('Uploading song:', title, 'by', artist);
+    console.log('Uploading song:', title, 'by', artists);
+
+    // Parse artists string into array
+    const artistsArray = artists.split(',').map(a => a.trim()).filter(a => a.length > 0);
+    const primaryArtist = artistsArray[0]; // First artist is primary
 
     // Create song document first to get ID
     const song = new Song({
       title,
-      artist,
+      artist: primaryArtist, // Keep for backward compatibility
+      artists: artistsArray, // Store all artists
       album: album || 'Unknown Album',
       duration: Number(duration) || 0,
+      year: year ? Number(year) : undefined,
       fileUrl: 'temp',
       uploadedBy: req.userId
     });
@@ -52,8 +143,8 @@ exports.uploadSong = async (req, res) => {
         mimeType: 'audio/mpeg'
       });
 
-      // Get duration
-      if (metadata.format.duration) {
+      // Get duration if not provided
+      if (!duration && metadata.format.duration) {
         extractedDuration = Math.floor(metadata.format.duration);
       }
 
@@ -127,7 +218,7 @@ exports.deleteSong = async (req, res) => {
 
 exports.updateSong = async (req, res) => {
   try {
-    const { title, artist, album, artworkUrl } = req.body;
+    const { title, artists, album, artworkUrl, year } = req.body;
     const song = await Song.findById(req.params.id);
 
     if (!song) {
@@ -135,9 +226,15 @@ exports.updateSong = async (req, res) => {
     }
 
     if (title) song.title = title;
-    if (artist) song.artist = artist;
     if (album) song.album = album;
     if (artworkUrl) song.artworkUrl = artworkUrl;
+    if (year) song.year = Number(year);
+    
+    if (artists) {
+      const artistsArray = artists.split(',').map(a => a.trim()).filter(a => a.length > 0);
+      song.artist = artistsArray[0]; // Update primary artist
+      song.artists = artistsArray; // Update all artists
+    }
 
     await song.save();
 
@@ -166,7 +263,7 @@ exports.getStats = async (req, res) => {
     const topSongs = await Song.find()
       .sort({ plays: -1 })
       .limit(10)
-      .select('title artist plays');
+      .select('title artist artists plays');
 
     res.json({
       stats: {

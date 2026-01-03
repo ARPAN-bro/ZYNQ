@@ -35,6 +35,9 @@ export const songAPI = {
 
 // Admin APIs
 export const adminAPI = {
+  extractMetadata: (formData) => api.post('/admin/extract-metadata', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   uploadSong: (formData) => api.post('/admin/songs', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
