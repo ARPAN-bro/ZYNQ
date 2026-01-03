@@ -25,41 +25,68 @@ exports.extractMetadata = async (req, res) => {
 
     try {
       const parsed = await musicMetadata.parseBuffer(file.buffer, {
-        mimeType: 'audio/mpeg'
+        mimeType: 'audio/mpeg',
+        duration: true
       });
 
-      console.log('Raw metadata:', parsed.common);
+      console.log('Raw metadata:', JSON.stringify(parsed.common, null, 2));
+      console.log('Format info:', JSON.stringify(parsed.format, null, 2));
 
       // Extract title
       if (parsed.common.title) {
-        metadata.title = parsed.common.title;
+        metadata.title = parsed.common.title.trim();
       }
 
-      // Extract artists (can be multiple)
-      if (parsed.common.artists && parsed.common.artists.length > 0) {
-        metadata.artists = parsed.common.artists.join(', ');
-      } else if (parsed.common.artist) {
-        metadata.artists = parsed.common.artist;
+      // Extract artists (handle multiple formats)
+      let artistsList = [];
+      
+      // Check for artists array (ID3v2.4)
+      if (parsed.common.artists && Array.isArray(parsed.common.artists) && parsed.common.artists.length > 0) {
+        artistsList = parsed.common.artists.map(a => a.trim()).filter(a => a.length > 0);
+      }
+      // Check for artist string (ID3v2.3)
+      else if (parsed.common.artist) {
+        // Handle semicolon or slash separated artists
+        if (parsed.common.artist.includes(';')) {
+          artistsList = parsed.common.artist.split(';').map(a => a.trim()).filter(a => a.length > 0);
+        } else if (parsed.common.artist.includes('/')) {
+          artistsList = parsed.common.artist.split('/').map(a => a.trim()).filter(a => a.length > 0);
+        } else {
+          artistsList = [parsed.common.artist.trim()];
+        }
+      }
+      // Check for albumartist as fallback
+      else if (parsed.common.albumartist) {
+        artistsList = [parsed.common.albumartist.trim()];
+      }
+
+      if (artistsList.length > 0) {
+        metadata.artists = artistsList.join(', ');
       }
 
       // Extract album
       if (parsed.common.album) {
-        metadata.album = parsed.common.album;
+        metadata.album = parsed.common.album.trim();
       }
 
-      // Extract duration
+      // Extract duration (in seconds)
       if (parsed.format.duration) {
         metadata.duration = Math.floor(parsed.format.duration);
       }
 
-      // Extract year
+      // Extract year (multiple possible sources)
       if (parsed.common.year) {
         metadata.year = parsed.common.year.toString();
       } else if (parsed.common.date) {
-        // Try to extract year from date string
-        const yearMatch = parsed.common.date.match(/\d{4}/);
+        // Try to extract year from date string (formats: YYYY-MM-DD, YYYY-MM, YYYY)
+        const yearMatch = parsed.common.date.match(/(\d{4})/);
         if (yearMatch) {
-          metadata.year = yearMatch[0];
+          metadata.year = yearMatch[1];
+        }
+      } else if (parsed.common.originaldate) {
+        const yearMatch = parsed.common.originaldate.match(/(\d{4})/);
+        if (yearMatch) {
+          metadata.year = yearMatch[1];
         }
       }
 
@@ -140,7 +167,8 @@ exports.uploadSong = async (req, res) => {
 
     try {
       const metadata = await musicMetadata.parseBuffer(file.buffer, {
-        mimeType: 'audio/mpeg'
+        mimeType: 'audio/mpeg',
+        duration: true
       });
 
       // Get duration if not provided

@@ -12,6 +12,10 @@ const songSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  artists: [{
+    type: String,
+    trim: true
+  }],
   album: {
     type: String,
     trim: true,
@@ -20,6 +24,9 @@ const songSchema = new mongoose.Schema({
   duration: {
     type: Number, // in seconds
     default: 0
+  },
+  year: {
+    type: Number
   },
   fileUrl: {
     type: String,
