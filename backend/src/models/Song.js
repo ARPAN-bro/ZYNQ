@@ -12,20 +12,10 @@ const songSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  // Array of artists for multi-artist support
-  artists: [{
-    type: String,
-    trim: true
-  }],
   album: {
     type: String,
     trim: true,
     default: 'Unknown Album'
-  },
-  year: {
-    type: Number,
-    min: 1900,
-    max: new Date().getFullYear() + 1
   },
   duration: {
     type: Number, // in seconds
@@ -55,17 +45,27 @@ const songSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  isEncrypted: {
-    type: Boolean,
-    default: true
-  },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
 
-// Index for search - including all artists
-songSchema.index({ title: 'text', artist: 'text', artists: 'text', album: 'text' });
+// Index for search
+songSchema.index({ title: 'text', artist: 'text', album: 'text' });
+
+// Transform artworkUrl to full URL when sending to client
+songSchema.methods.toJSON = function() {
+  const obj = this.toObject();
+  
+  // Convert relative artwork URL to absolute URL
+  if (obj.artworkUrl && obj.artworkUrl.startsWith('/uploads/')) {
+    // In production, use your actual domain
+    const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    obj.artworkUrl = baseUrl + obj.artworkUrl;
+  }
+  
+  return obj;
+};
 
 module.exports = mongoose.model('Song', songSchema);
