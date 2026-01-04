@@ -75,6 +75,7 @@ lib-cov/
 ############################################
 backend/uploads/*
 !backend/uploads/.gitkeep
+/frontend/public
 
 ############################################
 # VISUAL STUDIO / .NET
@@ -110,6 +111,8 @@ BenchmarkDotNet.Artifacts/
 !.vscode/*.code-snippets
 .vscode-test/
 .history/
+/.vscode/
+
 
 ############################################
 # JETBRAINS IDEs
