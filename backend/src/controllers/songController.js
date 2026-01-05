@@ -1,5 +1,6 @@
 // backend/src/controllers/songController.js
 const Song = require('../models/Song');
+const User = require('../models/User');
 const path = require('path');
 const fs = require('fs');
 
@@ -50,6 +51,13 @@ exports.streamSong = async (req, res) => {
     // Increment plays
     song.plays += 1;
     song.save().catch(err => console.error('Error updating plays:', err));
+
+    // Add to user's play history
+    const user = await User.findById(req.userId);
+    if (user) {
+      user.addToPlayHistory(song._id);
+      user.save().catch(err => console.error('Error updating history:', err));
+    }
 
     // Get file path
     const filepath = path.join(__dirname, '../../', song.fileUrl);

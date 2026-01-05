@@ -5,7 +5,7 @@ import { PlayerProvider } from './context/PlayerContext';
 import Navbar from './components/Layout/Navbar';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
-import SongList from './components/Library/SongList';
+import Library from './components/Library/Library';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import AudioPlayer from './components/Player/AudioPlayer';
 
@@ -57,7 +57,7 @@ function AppContent() {
             } />
             <Route path="/" element={
               <ProtectedRoute>
-                <SongList />
+                <Library />
               </ProtectedRoute>
             } />
             <Route path="/admin" element={

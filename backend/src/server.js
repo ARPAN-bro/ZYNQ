@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const songRoutes = require('./routes/songs');
 const adminRoutes = require('./routes/admin');
 const donationRoutes = require('./routes/donations');
+const libraryRoutes = require('./routes/library');
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/songs', songRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/donations', donationRoutes);
+app.use('/api/library', libraryRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
