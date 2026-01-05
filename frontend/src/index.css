@@ -16,13 +16,14 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Circular Std', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--background);
+  background-color: #000000;
   color: var(--text);
+  overflow-x: hidden;
 }
 
 #root {
@@ -38,6 +39,10 @@ button {
   font-family: inherit;
 }
 
+button:hover {
+  opacity: 0.8;
+}
+
 input, textarea {
   font-family: inherit;
 }
@@ -47,19 +52,166 @@ a {
   color: inherit;
 }
 
+/* Scrollbar Styles */
 ::-webkit-scrollbar {
   width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--secondary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: #282828;
   border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #3E3E3E;
+}
+
+/* Hide scrollbar for horizontal scroll containers */
+.scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animations */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Hover Effects */
+.quickAccessItem:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.quickAccessItem:hover .quickAccessPlayBtn {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.playlistCard:hover {
+  background-color: #282828 !important;
+}
+
+.playlistCard:hover .playlistPlayBtn {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.iconBtn:hover,
+.scrollBtn:hover,
+.navBtn:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  transform: scale(1.05);
+}
+
+.actionBtn:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  transform: scale(1.02);
+}
+
+.playBtn:hover {
+  transform: scale(1.05) !important;
+}
+
+/* Card Hover Effects */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  background-color: #282828;
+  transform: translateY(-4px);
+}
+
+/* Focus Styles */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background-color: var(--primary);
+  color: #000000;
+}
+
+/* Responsive Typography */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* Loading States */
+.loading-skeleton {
+  background: linear-gradient(
+    90deg,
+    #282828 0%,
+    #3E3E3E 50%,
+    #282828 100%
+  );
+  background-size: 200% 100%;
+  animation: loading 1.5s ease-in-out infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Utility Classes */
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
 }
